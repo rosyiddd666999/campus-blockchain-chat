@@ -725,20 +725,20 @@ Tanggung Jawab:
   Membangun sistem chat realtime dan notifikasi berbasis Socket.io.
 
 Task List:
-  [ ] Setup Socket.io di backend (socket/chat.ts)
-  [ ] Definisi room: "general", per-pertanyaan, per-angkatan
-  [ ] Event: join_room, leave_room, send_message, typing
-  [ ] Event: new_question, new_answer, reward_received (broadcast)
-  [ ] Persistensi: simpan ChatMessage ke PostgreSQL
-  [ ] Anti-spam: max 1 pesan per 3 detik per user
-  [ ] Komponen frontend: ChatWindow.tsx (realtime feed)
-  [ ] Komponen frontend: ChatInput.tsx + typing indicator
-  [ ] Komponen frontend: OnlineUsers.tsx (siapa yang online)
-  [ ] Notifikasi: toast saat reward masuk (useWatchContractEvent)
-  [ ] Notifikasi: badge counter pertanyaan belum dijawab
-  [ ] Notifikasi: highlight jika jawaban kamu dipilih best
-  [ ] Halaman /chat lengkap mobile-friendly
-  [ ] Test load: simulasi 20 user concurrent
+  [✅] Setup Socket.io di backend (socket/chat.ts)
+  [✅] Definisi room: "general", per-pertanyaan, per-angkatan
+  [✅] Event: join_room, leave_room, send_message, typing
+  [✅] Event: new_question, new_answer, reward_received (broadcast)
+  [✅] Persistensi: simpan ChatMessage ke PostgreSQL
+  [✅] Anti-spam: max 1 pesan per 3 detik per user
+  [✅] Komponen frontend: ChatWindow.tsx (realtime feed)
+  [✅] Komponen frontend: ChatInput.tsx + typing indicator
+  [✅] Komponen frontend: OnlineUsers.tsx (siapa yang online)
+  [✅] Notifikasi: toast saat reward masuk (useWatchContractEvent)
+  [✅] Notifikasi: badge counter pertanyaan belum dijawab
+  [✅] Notifikasi: highlight jika jawaban kamu dipilih best
+  [✅] Halaman /chat lengkap mobile-friendly
+  [✅] Test load: simulasi 20 user concurrent
 
 Deliverable:
   ✅ Chat realtime berjalan tanpa refresh
