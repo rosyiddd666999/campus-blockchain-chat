@@ -658,20 +658,20 @@ Tanggung Jawab:
   Menulis, menguji, dan men-deploy semua smart contract ke Sepolia Testnet.
 
 Task List:
-  [ ] Setup project Hardhat + konfigurasi Sepolia
-  [ ] Install OpenZeppelin contracts v5
-  [ ] Tulis CampusCoin.sol (ERC-20, mintable, pausable)
-  [ ] Tulis RewardManager.sol (reward matrix + cooldown + daily cap)
-  [ ] Tulis Whitelist.sol (akses kontrol mahasiswa TI)
-  [ ] Tulis interfaces/ untuk semua contract
-  [ ] Unit test: CampusCoin.test.ts (min. 10 test cases)
-  [ ] Unit test: RewardManager.test.ts (min. 15 test cases)
-  [ ] Unit test: Whitelist.test.ts (min. 8 test cases)
-  [ ] Coverage report ≥ 90%
-  [ ] Deploy ke Sepolia via scripts/deploy.ts
-  [ ] Verify semua contract di Sepolia Etherscan
-  [ ] Catat & update semua contract address ke AGENT.md
-  [ ] Ekspor ABI ke frontend/lib/contracts.ts
+  [x] Setup project Hardhat + konfigurasi Sepolia
+  [x] Install OpenZeppelin contracts v5
+  [x] Tulis CampusCoin.sol (ERC-20, mintable, pausable)
+  [x] Tulis RewardManager.sol (reward matrix + cooldown + daily cap)
+  [x] Tulis Whitelist.sol (akses kontrol mahasiswa TI)
+  [x] Tulis interfaces/ untuk semua contract
+  [x] Unit test: CampusCoin.test.ts (min. 10 test cases)
+  [x] Unit test: RewardManager.test.ts (min. 15 test cases)
+  [x] Unit test: Whitelist.test.ts (min. 8 test cases)
+  [x] Coverage report ≥ 90%
+  [x] Deploy ke Sepolia via scripts/deploy.ts
+  [x] Verify semua contract di Sepolia Etherscan
+  [x] Catat & update semua contract address ke AGENT.md
+  [x] Ekspor ABI ke frontend/lib/contracts.ts
 
 Deliverable:
   ✅ 3 contract live di Sepolia + verified di Etherscan
