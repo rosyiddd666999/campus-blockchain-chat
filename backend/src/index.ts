@@ -14,6 +14,17 @@ import {
   setIoInstance,
 } from "./services/notification";
 
+// Import Routes
+import authRouter from "./routes/auth";
+import postsRouter from "./routes/posts";
+import commentsRouter from "./routes/comments";
+import rewardsRouter from "./routes/rewards";
+import leaderboardRouter from "./routes/leaderboard";
+import adminRouter from "./routes/admin";
+
+// Import Event Listener
+import { startEventListener } from "./events/listener";
+
 dotenv.config();
 
 const app = express();
@@ -34,6 +45,14 @@ setupChatSocket(io);
 
 app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json());
+
+// Register API Routes
+app.use("/api/auth", authRouter);
+app.use("/api/posts", postsRouter);
+app.use("/api/comments", commentsRouter);
+app.use("/api/rewards", rewardsRouter);
+app.use("/api/leaderboard", leaderboardRouter);
+app.use("/api/admin", adminRouter);
 
 app.get("/health", (_req, res) => {
   res.json({ success: true, data: { status: "ok" } });
@@ -87,6 +106,7 @@ app.get("/api/chat/:roomId/messages", async (req, res) => {
   }
 });
 
+// Internal/Legacy broadcast endpoints
 app.post("/api/internal/broadcast/question", (req, res) => {
   const { postId, title, authorId, authorName } = req.body;
   if (!postId || !title || !authorId || !authorName) {
@@ -132,6 +152,13 @@ const PORT = parseInt(process.env.PORT ?? "4000", 10);
 httpServer.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
   console.log(`Socket.io ready (CORS: ${corsOrigin})`);
+
+  // Start the on-chain event listener
+  try {
+    startEventListener();
+  } catch (error) {
+    console.error("Failed to start on-chain event listener:", error);
+  }
 });
 
 export { app, io };

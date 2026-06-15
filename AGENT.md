@@ -689,24 +689,24 @@ Tanggung Jawab:
   Membangun REST API, database schema, autentikasi, dan integrasi blockchain.
 
 Task List:
-  [ ] Setup Express + TypeScript + folder structure
-  [ ] Setup PostgreSQL + Prisma schema (semua model)
-  [ ] Prisma migrate & generate
-  [ ] Setup Redis untuk session & rate limiting
-  [ ] Implementasi Auth: nonce, SIWE verify, JWT issue
-  [ ] Middleware: auth guard, whitelist check, rate limiter
-  [ ] Route: POST /posts, GET /posts, GET /posts/:id
-  [ ] Route: POST /posts/:id/answers
-  [ ] Route: POST /posts/:id/best (pilih best answer)
-  [ ] Route: POST /posts/:id/like & /share
-  [ ] Route: POST /comments, DELETE /comments/:id
-  [ ] Route: GET /rewards/balance, GET /rewards/history
-  [ ] Route: GET /leaderboard, GET /leaderboard/weekly
-  [ ] Route: Admin whitelist management
-  [ ] Service: blockchain.ts (viem client, contract calls)
-  [ ] Service: reward.ts (hitung & distribute reward)
-  [ ] Event listener: listen on-chain events → update DB
-  [ ] Dokumentasi API endpoint (bisa Postman collection)
+  [x] Setup Express + TypeScript + folder structure
+  [x] Setup PostgreSQL + Prisma schema (semua model)
+  [x] Prisma migrate & generate
+  [x] Setup Redis untuk session & rate limiting
+  [x] Implementasi Auth: nonce, SIWE verify, JWT issue
+  [x] Middleware: auth guard, whitelist check, rate limiter
+  [x] Route: POST /posts, GET /posts, GET /posts/:id
+  [x] Route: POST /posts/:id/answers
+  [x] Route: POST /posts/:id/best (pilih best answer)
+  [x] Route: POST /posts/:id/like & /share
+  [x] Route: POST /comments, DELETE /comments/:id
+  [x] Route: GET /rewards/balance, GET /rewards/history
+  [x] Route: GET /leaderboard, GET /leaderboard/weekly
+  [x] Route: Admin whitelist management
+  [x] Service: blockchain.ts (viem client, contract calls)
+  [x] Service: reward.ts (hitung & distribute reward)
+  [x] Event listener: listen on-chain events → update DB
+  [x] Dokumentasi API endpoint (bisa Postman collection)
 
 Deliverable:
   ✅ API berjalan di localhost:4000
