@@ -1,47 +1,110 @@
-import { Router, Request, Response } from 'express';
-import { prisma } from '../config/database';
+import { Router, Response } from "express";
+import { prisma } from "../config/database";
+import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
+import { formatEther } from "viem";
+import {
+  getOnChainBalance,
+  getUnclaimedBalance,
+  getDailyStatsOnChain,
+} from "../services/blockchain";
 
 const router = Router();
 
-// Get all rewards
-router.get('/', async (_req: Request, res: Response) => {
-  const rewards = await prisma.reward.findMany();
-  res.json(rewards);
+// 1. Fetch CSIT Balances (Claimed On-Chain & Unclaimed)
+router.get("/balance", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: "Unauthorized" });
+      return;
+    }
+
+    const [onChainBig, unclaimedBig] = await Promise.all([
+      getOnChainBalance(req.user.walletAddress),
+      getUnclaimedBalance(req.user.walletAddress),
+    ]);
+
+    const onChainFormatted = parseFloat(formatEther(onChainBig));
+    const unclaimedFormatted = parseFloat(formatEther(unclaimedBig));
+
+    res.json({
+      success: true,
+      data: {
+        onChain: onChainBig.toString(),
+        unclaimed: unclaimedBig.toString(),
+        onChainFormatted,
+        unclaimedFormatted,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching balance:", error);
+    res.status(500).json({ success: false, error: "Gagal mengambil saldo token" });
+  }
 });
 
-// Get a reward by ID
-router.get('/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const reward = await prisma.reward.findUnique({ where: { id: Number(id) } });
-  if (!reward) return res.status(404).json({ message: 'Reward not found' });
-  res.json(reward);
+// 2. Reward History Logs (From DB)
+router.get("/history", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: "Unauthorized" });
+      return;
+    }
+
+    const history = await prisma.rewardHistory.findMany({
+      where: { userId: req.user.id },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json({
+      success: true,
+      data: history,
+    });
+  } catch (error) {
+    console.error("Error fetching reward history:", error);
+    res.status(500).json({ success: false, error: "Gagal mengambil riwayat reward" });
+  }
 });
 
-// Create a new reward
-router.post('/', async (req: Request, res: Response) => {
-  const { userId, amount, action, txHash } = req.body;
-  const newReward = await prisma.reward.create({
-    data: { userId: Number(userId), amount: Number(amount), action, txHash },
-  });
-  res.status(201).json(newReward);
-});
+// 3. Daily Action Statistics (From Blockchain/DB)
+router.get("/daily-stats", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: "Unauthorized" });
+      return;
+    }
 
-// Update a reward
-router.put('/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { amount, action, txHash } = req.body;
-  const updated = await prisma.reward.update({
-    where: { id: Number(id) },
-    data: { amount: Number(amount), action, txHash },
-  });
-  res.json(updated);
-});
+    // Get current Unix timestamp (seconds)
+    const currentTimestamp = Math.floor(Date.now() / 1000);
 
-// Delete a reward
-router.delete('/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  await prisma.reward.delete({ where: { id: Number(id) } });
-  res.status(204).send();
+    const stats = await getDailyStatsOnChain(req.user.walletAddress, currentTimestamp);
+
+    if (!stats) {
+      res.json({
+        success: true,
+        data: {
+          postQuestionCount: 0,
+          postAnswerCount: 0,
+          receiveLikeCount: 0,
+          postCommentCount: 0,
+          sharePostCount: 0,
+        },
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        postQuestionCount: Number(stats.postQuestionCount),
+        postAnswerCount: Number(stats.postAnswerCount),
+        receiveLikeCount: Number(stats.receiveLikeCount),
+        postCommentCount: Number(stats.postCommentCount),
+        sharePostCount: Number(stats.sharePostCount),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching daily stats:", error);
+    res.status(500).json({ success: false, error: "Gagal mengambil statistik harian" });
+  }
 });
 
 export default router;

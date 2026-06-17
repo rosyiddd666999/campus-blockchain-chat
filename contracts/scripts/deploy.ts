@@ -1,4 +1,7 @@
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const ethers = (hre as any).ethers;
+
+
 
 async function main() {
   const [deployer] = await ethers.getSigners();
@@ -20,7 +23,11 @@ async function main() {
 
   // Deploy RewardManager
   const RewardManager = await ethers.getContractFactory("RewardManager");
-  const rewardManager = await RewardManager.deploy(deployer.address, campusCoinAddress, whitelistAddress);
+  const rewardManager = await RewardManager.deploy(
+    deployer.address,
+    campusCoinAddress,
+    whitelistAddress,
+  );
   await rewardManager.waitForDeployment();
   const rewardManagerAddress = await rewardManager.getAddress();
   console.log("RewardManager deployed to:", rewardManagerAddress);
