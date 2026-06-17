@@ -1,0 +1,99 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  walletAddress String    @unique
+  nim           String    @unique
+  name          String
+  angkatan      Int
+  isVerified    Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  
+  posts         Post[]
+  answers       Answer[]
+  comments      Comment[]
+  rewards       RewardHistory[]
+  chatMessages  ChatMessage[]
+}
+
+model Post {
+  id          String    @id @default(cuid())
+  title       String
+  body        String
+  tags        String[]
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id])
+  answers     Answer[]
+  comments    Comment[]
+  likes       Like[]
+  bestAnswer  String?   // Answer id
+  txHash      String?   // On-chain transaction hash
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Answer {
+  id          String    @id @default(cuid())
+  body        String
+  postId      String
+  post        Post      @relation(fields: [postId], references: [id])
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id])
+  comments    Comment[]
+  likes       Like[]
+  isBest      Boolean   @default(false)
+  txHash      String?
+  createdAt   DateTime  @default(now())
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  body      String
+  postId    String?
+  answerId  String?
+  post      Post?    @relation(fields: [postId], references: [id])
+  answer    Answer?  @relation(fields: [answerId], references: [id])
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String?
+  answerId  String?
+  post      Post?    @relation(fields: [postId], references: [id])
+  answer    Answer?  @relation(fields: [answerId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@unique([userId, answerId])
+}
+
+model RewardHistory {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  action      String
+  amount      Int
+  txHash      String
+  contentId   String?
+  createdAt   DateTime   @default(now())
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  body      String
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  roomId    String   @default("general")
+  createdAt DateTime @default(now())
+}

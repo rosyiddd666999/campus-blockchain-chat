@@ -52,16 +52,13 @@ export function QuestionCard({ post }: QuestionCardProps) {
         {/* Author & Date Header */}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
-            <Link
-              href={`/profile/${post.authorId}`}
-              className="flex items-center gap-1.5 font-semibold text-foreground hover:text-emerald-500 transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="flex items-center gap-1.5 font-semibold text-foreground">
               <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-zinc-500">
                 <User className="h-3 w-3" />
               </div>
               <span className="truncate max-w-[120px] sm:max-w-none">{displayAuthorName}</span>
-            </Link>
+            </div>
+
             <span>&bull;</span>
             <span className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
