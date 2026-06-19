@@ -1,36 +1,59 @@
 "use client";
 
 import React, { useState } from "react";
-import { Trophy, Award, Search, Sparkles, TrendingUp, Calendar } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { Trophy, Award, Search, Sparkles, TrendingUp } from "lucide-react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query"; // 1. Import useQuery
+import { api } from "@/lib/api"; // 2. Import instance API Anda
+
+type LeaderboardUser = {
+  walletAddress: string;
+  name: string;
+  nim: string;
+  angkatan: string | number;
+  reputation: number;
+  balance: number;
+};
 
 export default function Leaderboard() {
-  const users = useAppStore((state) => state.users);
   const [search, setSearch] = useState("");
   const [filterPeriod, setFilterPeriod] = useState<"alltime" | "weekly">("alltime");
 
-  // Transform users object into sorted array by reputation (contribution score)
-  const leaderboardData = Object.values(users)
+  // 3. Fetch data dari backend menggunakan React Query menggantikan Zustand store lama
+  const { data: usersArray = [], isLoading } = useQuery<LeaderboardUser[]>({
+    queryKey: ["leaderboard", filterPeriod],
+    queryFn: async () => {
+      // Sesuaikan endpoint API leaderboard Anda di backend
+      const endpoint = filterPeriod === "weekly" ? "/api/leaderboard/weekly" : "/api/leaderboard";
+      const response = await api.get<LeaderboardUser[]>(endpoint);
+      return Array.isArray(response) ? response : [];
+    },
+  });
+
+  // 4. Transformasi array data langsung yang didapat dari API backend
+  const leaderboardData = usersArray
     .filter((u) => u.name.toLowerCase().includes(search.toLowerCase()) || u.nim.includes(search))
-    .sort((a, b) => b.reputation - a.reputation);
+    .sort((a, b) => b.balance - a.balance);
 
   // Top 3 Podium Winners
   const podium = leaderboardData.slice(0, 3);
   const remainderList = leaderboardData.slice(3);
 
-  // Order podium as: 2nd, 1st, 3rd for traditional layout display
   const orderedPodium = [];
-  if (podium[1]) orderedPodium.push({ ...podium[1], rank: 2, color: "text-zinc-400 bg-zinc-400/10 border-zinc-400/20" }); // 2nd
-  if (podium[0]) orderedPodium.push({ ...podium[0], rank: 1, color: "text-amber-500 bg-amber-500/10 border-amber-500/20 shadow-amber-500/5" }); // 1st
-  if (podium[2]) orderedPodium.push({ ...podium[2], rank: 3, color: "text-amber-700 bg-amber-700/10 border-amber-700/20" }); // 3rd
+  if (podium[1]) orderedPodium.push({ ...podium[1], rank: 2, color: "text-zinc-400 bg-zinc-400/10 border-zinc-400/20" });
+  if (podium[0]) orderedPodium.push({ ...podium[0], rank: 1, color: "text-amber-500 bg-amber-500/10 border-amber-500/20 shadow-amber-500/5" });
+  if (podium[2]) orderedPodium.push({ ...podium[2], rank: 3, color: "text-amber-700 bg-amber-700/10 border-amber-700/20" });
+
+  if (isLoading) {
+    return <div className="text-center py-10 text-muted-foreground animate-pulse">Memuat papan peringkat...</div>;
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-foreground bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground bg-linear-to-r from-emerald-500 to-teal-400 bg-clip-text">
             Papan Peringkat Kontribusi
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -90,7 +113,7 @@ export default function Leaderboard() {
                 <div className="mt-4 space-y-1">
                   <Link
                     href={`/profile/${winner.walletAddress}`}
-                    className="font-bold text-sm text-foreground hover:text-emerald-500 transition-colors block max-w-[150px] truncate"
+                    className="font-bold text-sm text-foreground hover:text-emerald-500 transition-colors block max-w-37.5 truncate"
                   >
                     {winner.name}
                   </Link>

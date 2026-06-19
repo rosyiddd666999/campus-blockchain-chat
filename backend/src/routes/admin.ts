@@ -2,7 +2,7 @@ import { Router, Response } from "express";
 import { prisma } from "../config/database";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import { account } from "../config/blockchain";
-import { addToWhitelistOnChain, removeFromWhitelistOnChain } from "../services/blockchain";
+import { addToWhitelistOnChain, removeFromWhitelistOnChain, isWhitelisted } from "../services/blockchain";
 import { z } from "zod/v4";
 
 const router = Router();
@@ -32,7 +32,9 @@ router.post("/whitelist", authMiddleware, isAdmin, async (req: AuthenticatedRequ
   try {
     const parseResult = whitelistSchema.safeParse(req.body);
     if (!parseResult.success) {
-      res.status(400).json({ success: false, error: parseResult.error.errors[0].message });
+      // ZodError uses `issues` for detailed error items
+      const msg = parseResult.error.issues?.[0]?.message || "Invalid input";
+      res.status(400).json({ success: false, error: msg });
       return;
     }
 
@@ -78,6 +80,26 @@ router.delete("/whitelist/:nim", authMiddleware, isAdmin, async (req: Authentica
 
     if (!student) {
       res.status(404).json({ success: false, error: "Mahasiswa tidak ditemukan di database" });
+      return;
+    }
+
+    // Cek status on-chain dulu
+    const onChainStatus = await isWhitelisted(student.walletAddress);
+    if (!onChainStatus) {
+      // Wallet tidak ada di on-chain whitelist, cukup update DB saja
+      await prisma.user.update({
+        where: { id: student.id },
+        data: { isVerified: false },
+      });
+      res.json({
+        success: true,
+        data: {
+          nim,
+          walletAddress: student.walletAddress,
+          txHash: null,
+          note: "Wallet sudah tidak ada di on-chain whitelist. Hanya database yang diupdate.",
+        },
+      });
       return;
     }
 

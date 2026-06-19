@@ -1,26 +1,34 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
-import { useAppStore } from "@/lib/store";
-import { AlertTriangle, HelpCircle, Plus, Info } from "lucide-react";
+import { useCurrentUser, useAppStore } from "@/lib/store";
+import { postsApi, ApiError } from "@/lib/api";
+import { AlertTriangle, HelpCircle, Plus, Info, Loader2 } from "lucide-react";
 
 export default function AskQuestion() {
   const router = useRouter();
   const { isConnected, address } = useAccount();
-  const users = useAppStore((state) => state.users);
-  const addQuestion = useAppStore((state) => state.addQuestion);
+  
+  const currentUser = useCurrentUser();
+  const refreshCurrentUser = useAppStore((s) => s.refreshCurrentUser);
+  const addTransaction = useAppStore((s) => s.addTransaction);
+  const confirmTransaction = useAppStore((s) => s.confirmTransaction);
+  const failTransaction = useAppStore((s) => s.failTransaction);
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check if current user is whitelisted/verified
-  const userKey = address?.toLowerCase() || "";
-  const userProfile = users[userKey];
-  const isVerified = userProfile?.isVerified || false;
+  useEffect(() => {
+    if (address) {
+      refreshCurrentUser(address);
+    }
+  }, [address, refreshCurrentUser]);
+
+  const isVerified = currentUser?.isVerified || false;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,27 +37,30 @@ export default function AskQuestion() {
       return;
     }
     if (!isVerified) {
-      alert("Wallet Anda belum masuk whitelist Informatika. Minta Admin untuk mendaftarkannya terlebih dahulu!");
+      alert(
+        "Wallet Anda belum masuk whitelist Informatika. Minta Admin untuk mendaftarkannya terlebih dahulu!",
+      );
       return;
     }
     if (!title.trim() || !body.trim()) return;
 
-    try {
-      setIsSubmitting(true);
-      // Split tags by comma or space
-      const tags = tagsInput
-        .split(/[\s,]+/)
-        .map((t) => t.replace("#", "").trim())
-        .filter(Boolean);
+    const tags = tagsInput
+      .split(/[\s,]+/)
+      .map((t) => t.replace("#", "").trim())
+      .filter(Boolean);
 
-      addQuestion(title, body, tags, address);
-      
-      // Simulate delay for transaction deployment
-      setTimeout(() => {
-        router.push("/");
-      }, 1500);
-    } catch (error) {
-      console.error(error);
+    setIsSubmitting(true);
+
+    const txHash = addTransaction(`Memposting pertanyaan: "${title.slice(0, 50)}..."`);
+
+    try {
+      const post = await postsApi.create({ title: title.trim(), body: body.trim(), tags }, address);
+      confirmTransaction(txHash);
+      router.push(`/question/${post.id}`);
+    } catch (err) {
+      failTransaction(txHash);
+      const msg = err instanceof ApiError ? err.message : "Gagal memposting pertanyaan";
+      alert(msg);
       setIsSubmitting(false);
     }
   };
@@ -58,11 +69,12 @@ export default function AskQuestion() {
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-foreground bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">
+        <h1 className="text-2xl font-extrabold tracking-tight text-foreground bg-linear-to-r from-emerald-500 to-teal-400 bg-clip-text">
           Buat Pertanyaan Baru
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Bagikan masalah pemprograman atau blockchain Anda di forum komunitas untuk berdiskusi.
+          Bagikan masalah pemprograman atau blockchain Anda di forum komunitas
+          untuk berdiskusi.
         </p>
       </div>
 
@@ -72,7 +84,9 @@ export default function AskQuestion() {
           <div className="space-y-1">
             <h3 className="font-bold text-sm">Wallet Belum Terhubung</h3>
             <p className="text-xs leading-relaxed opacity-90">
-              Anda harus menghubungkan wallet MetaMask Anda ke platform untuk dapat menulis pertanyaan. Harap gunakan tombol "Connect Wallet" di sudut kanan atas.
+              Anda harus menghubungkan wallet MetaMask Anda ke platform untuk
+              dapat menulis pertanyaan. Harap gunakan tombol "Connect Wallet" di
+              sudut kanan atas.
             </p>
           </div>
         </div>
@@ -82,7 +96,13 @@ export default function AskQuestion() {
           <div className="space-y-1">
             <h3 className="font-bold text-sm">Address Belum Ter-Whitelist</h3>
             <p className="text-xs leading-relaxed opacity-90">
-              Address wallet Anda (<code>{address.slice(0, 6)}...{address.slice(-4)}</code>) belum terdaftar di whitelist mahasiswa Teknik Informatika. Hanya mahasiswa terverifikasi yang dapat memposting kontribusi dan mengklaim token.
+              Address wallet Anda (
+              <code>
+                {address.slice(0, 6)}...{address.slice(-4)}
+              </code>
+              ) belum terdaftar di whitelist mahasiswa Teknik Informatika. Hanya
+              mahasiswa terverifikasi yang dapat memposting kontribusi dan
+              mengklaim token.
             </p>
             <p className="text-xs font-semibold underline pt-1">
               Silakan minta Admin untuk menambahkan address Anda di panel Admin.
@@ -90,10 +110,15 @@ export default function AskQuestion() {
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl border border-border bg-card p-6 shadow-xl">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5 rounded-2xl border border-border bg-card p-6 shadow-xl"
+        >
           {/* Title */}
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-foreground">Judul Pertanyaan</label>
+            <label className="text-sm font-semibold text-foreground">
+              Judul Pertanyaan
+            </label>
             <input
               type="text"
               required
@@ -104,13 +129,16 @@ export default function AskQuestion() {
               className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 transition-all font-medium"
             />
             <p className="text-[11px] text-muted-foreground leading-normal">
-              Buat judul yang ringkas dan deskriptif agar mudah dipahami mahasiswa lain.
+              Buat judul yang ringkas dan deskriptif agar mudah dipahami
+              mahasiswa lain.
             </p>
           </div>
 
           {/* Body */}
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-foreground">Detail Deskripsi Masalah</label>
+            <label className="text-sm font-semibold text-foreground">
+              Detail Deskripsi Masalah
+            </label>
             <textarea
               required
               disabled={isSubmitting}
@@ -124,7 +152,9 @@ export default function AskQuestion() {
 
           {/* Tags */}
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-foreground">Topik / Tag</label>
+            <label className="text-sm font-semibold text-foreground">
+              Topik / Tag
+            </label>
             <input
               type="text"
               disabled={isSubmitting}
@@ -142,7 +172,10 @@ export default function AskQuestion() {
           <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-4 text-emerald-500 text-xs flex gap-3 items-start">
             <Info className="h-4.5 w-4.5 shrink-0 mt-0.5" />
             <div className="leading-relaxed font-medium">
-              Memposting pertanyaan akan memicu interaksi smart contract <code>RewardManager.sol</code> untuk melakukan mint reward sebesar <strong>5 CSIT</strong> ke wallet Anda setelah transaksi selesai dikonfirmasi.
+              Memposting pertanyaan akan memicu interaksi smart contract{" "}
+              <code>RewardManager.sol</code> untuk melakukan mint reward sebesar{" "}
+              <strong>5 CSIT</strong> ke wallet Anda setelah transaksi selesai
+              dikonfirmasi.
             </div>
           </div>
 
@@ -161,7 +194,9 @@ export default function AskQuestion() {
               disabled={isSubmitting || !title.trim() || !body.trim()}
               className="rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-200 dark:disabled:bg-zinc-800 disabled:text-zinc-400 dark:disabled:text-zinc-600 px-6 py-2.5 text-sm font-bold text-white transition-all cursor-pointer shadow-lg shadow-emerald-500/10"
             >
-              {isSubmitting ? "Mengirim ke Blockchain..." : "Publikasikan Pertanyaan"}
+              {isSubmitting
+                ? "Mengirim ke Blockchain..."
+                : "Publikasikan Pertanyaan"}
             </button>
           </div>
         </form>

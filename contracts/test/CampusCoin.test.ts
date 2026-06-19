@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import "@nomicfoundation/hardhat-chai-matchers";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
@@ -55,9 +56,10 @@ describe("CampusCoin", function () {
     await coin.connect(minter).mint(user1.address, maxCap);
     expect(await coin.totalSupply()).to.equal(maxCap);
 
-    await expect(
-      coin.connect(minter).mint(user1.address, ethers.parseEther("1"))
-    ).to.be.revertedWith("CampusCoin: cap exceeded");
+    await coin.connect(minter).mint(user1.address, ethers.parseEther("1")).then(
+      () => { throw new Error("Expected transaction to revert"); },
+      (err: any) => { expect(err.message).to.contain("CampusCoin: cap exceeded"); }
+    );
   });
 
   it("6. Should allow minter to burn tokens", async function () {

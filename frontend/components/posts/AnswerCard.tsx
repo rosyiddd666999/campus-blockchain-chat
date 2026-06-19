@@ -1,57 +1,86 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { ThumbsUp, CheckCircle2, User, Calendar } from "lucide-react";
 import { useAccount } from "wagmi";
-import { useAppStore, Answer } from "@/lib/store";
+import { useQueryClient } from "@tanstack/react-query";
+import { postsApi, ApiError } from "@/lib/api";
+import { useAppStore } from "@/lib/store";
 
-interface AnswerCardProps {
-  answer: Answer;
-  questionAuthorId: string;
-  bestAnswerId: string | null;
+interface AnswerAuthor {
+  id: string;
+  name: string;
+  walletAddress: string;
 }
 
-export function AnswerCard({ answer, questionAuthorId, bestAnswerId }: AnswerCardProps) {
+interface AnswerWithAuthor {
+  id: string;
+  body: string;
+  author: AnswerAuthor;
+  isBest: boolean;
+  txHash: string | null;
+  createdAt: string;
+  likesCount: number;
+  isLikedByMe?: boolean;
+}
+
+interface AnswerCardProps {
+  answer: AnswerWithAuthor;
+  postId: string;
+  bestAnswerId: string | null;
+  questionAuthorId: string;
+}
+
+function shortAddress(addr: string) {
+  if (!addr) return "0x0000...0000";
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
+export function AnswerCard({ answer, postId, bestAnswerId, questionAuthorId }: AnswerCardProps) {
   const { address, isConnected } = useAccount();
-  const likeAnswer = useAppStore((state) => state.likeAnswer);
-  const selectBestAnswer = useAppStore((state) => state.selectBestAnswer);
-  const users = useAppStore((state) => state.users);
+  const queryClient = useQueryClient();
+  const addTransaction = useAppStore((s) => s.addTransaction);
+  const confirmTransaction = useAppStore((s) => s.confirmTransaction);
+  const failTransaction = useAppStore((s) => s.failTransaction);
 
-  const [hasLiked, setHasLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
+  const [hasLiked, setHasLiked] = useState(answer.isLikedByMe || false);
+  const [likeCount, setLikeCount] = useState(answer.likesCount || 0);
 
-  useEffect(() => {
-    if (address) {
-      setHasLiked(answer.likes.includes(address));
-    } else {
-      setHasLiked(false);
-    }
-    setLikeCount(answer.likes.length);
-  }, [answer.likes, address]);
-
-  const handleLike = () => {
+  const handleLike = async () => {
     if (!isConnected || !address) {
       alert("Hubungkan wallet MetaMask Anda terlebih dahulu!");
       return;
     }
-    likeAnswer(answer.id, address);
-  };
-
-  const handleSelectBest = () => {
-    if (!isConnected || !address) return;
-    if (confirm("Pilih jawaban ini sebagai solusi terbaik? Tindakan ini akan mengirimkan reward 20 CSIT ke penulis jawaban.")) {
-      selectBestAnswer(answer.postId, answer.id, address);
+    const txHash = addTransaction(`Like jawaban...`);
+    try {
+      const res = await postsApi.likeAnswer(answer.id, address);
+      setHasLiked(res.liked);
+      setLikeCount((c) => c + (res.liked ? 1 : -1));
+      confirmTransaction(txHash);
+    } catch (err) {
+      failTransaction(txHash);
+      if (err instanceof ApiError) alert(err.message);
     }
   };
 
-  // Determine if this is the active user's own question
-  const isQuestionAuthor = address?.toLowerCase() === questionAuthorId.toLowerCase();
-  const isBestAnswer = answer.isBest || bestAnswerId === answer.id;
+  const handleSelectBest = async () => {
+    if (!isConnected || !address) return;
+    if (!confirm("Pilih jawaban ini sebagai solusi terbaik? Reward 20 CSIT akan dikirim ke penulis jawaban.")) return;
+    const txHash = addTransaction("Memilih solusi terbaik...");
+    try {
+      await postsApi.selectBestAnswer(postId, answer.id, address);
+      confirmTransaction(txHash);
+      queryClient.invalidateQueries({ queryKey: ["post", postId] });
+    } catch (err) {
+      failTransaction(txHash);
+      if (err instanceof ApiError) alert(err.message);
+    }
+  };
 
-  // Author details
-  const authorInfo = users[answer.authorId.toLowerCase()];
-  const displayAuthorName = authorInfo?.name || answer.authorName;
+  const isQuestionAuthor = !!address && !!questionAuthorId && address.toLowerCase() === questionAuthorId.toLowerCase();
+  const isBestAnswer = answer.isBest || bestAnswerId === answer.id;
+  const displayAuthorName = answer.author?.name || shortAddress(answer.author?.walletAddress || "");
 
   const formattedDate = new Date(answer.createdAt).toLocaleDateString("id-ID", {
     day: "numeric",
@@ -73,7 +102,7 @@ export function AnswerCard({ answer, questionAuthorId, bestAnswerId }: AnswerCar
       <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
         <div className="flex items-center gap-2">
           <Link
-            href={`/profile/${answer.authorId}`}
+            href={`/profile/${answer.author?.walletAddress}`}
             className="flex items-center gap-1.5 font-semibold text-foreground hover:text-emerald-500 transition-colors"
           >
             <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary text-zinc-500">

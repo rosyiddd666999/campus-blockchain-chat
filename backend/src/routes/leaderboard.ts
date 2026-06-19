@@ -21,11 +21,11 @@ router.get("/", async (_req, res: Response) => {
           nim: u.nim,
           angkatan: u.angkatan,
           walletAddress: u.walletAddress,
-          balance: (BigInt(totalAmount) * 10n ** 18n).toString(),
-          balanceFormatted: totalAmount,
+          balance: totalAmount,
+          reputation: totalAmount,
         };
       })
-      .sort((a, b) => b.balanceFormatted - a.balanceFormatted);
+      .sort((a, b) => b.balance - a.balance);
 
     res.json({
       success: true,
@@ -62,10 +62,11 @@ router.get("/weekly", async (_req, res: Response) => {
           nim: u.nim,
           angkatan: u.angkatan,
           walletAddress: u.walletAddress,
-          weeklyPoints,
+          balance: weeklyPoints,
+          reputation: weeklyPoints,
         };
       })
-      .sort((a, b) => b.weeklyPoints - a.weeklyPoints);
+      .sort((a, b) => b.balance - a.balance);
 
     res.json({
       success: true,

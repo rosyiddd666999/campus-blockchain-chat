@@ -111,6 +111,13 @@ export const RewardManagerABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [{ name: "user", type: "address" }],
+    name: "claimDailyRewards",
+    outputs: [],
+    stateMutability: "external",
+    type: "function",
+  },
 ] as const;
 
 export const CampusCoinABI = [
@@ -123,7 +130,17 @@ export const CampusCoinABI = [
   },
 ] as const;
 
+const ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
+
+function isValidEvmAddress(addr: string): addr is `0x${string}` {
+  return ADDRESS_REGEX.test(addr);
+}
+
 export async function isWhitelisted(walletAddress: string): Promise<boolean> {
+  if (!isValidEvmAddress(walletAddress)) {
+    console.warn(`Invalid EVM address skipped: ${walletAddress}`);
+    return false;
+  }
   try {
     return await publicClient.readContract({
       address: WHITELIST_ADDRESS,
@@ -215,6 +232,32 @@ export async function getUnclaimedBalance(walletAddress: string): Promise<bigint
   }
 }
 
+export async function claimRewardsOnChain(userAddress: string): Promise<string | null> {
+  if (!walletClient || !account) {
+    console.error("Wallet client not configured for claiming");
+    return null;
+  }
+  if (!isValidEvmAddress(userAddress)) {
+    console.warn(`Invalid EVM address for claim: ${userAddress}`);
+    return null;
+  }
+  try {
+    const { request } = await publicClient.simulateContract({
+      address: REWARD_MANAGER_ADDRESS,
+      abi: RewardManagerABI,
+      functionName: "claimDailyRewards",
+      args: [userAddress as `0x${string}`],
+      account,
+    });
+    const hash = await walletClient.writeContract(request);
+    await publicClient.waitForTransactionReceipt({ hash });
+    return hash;
+  } catch (error) {
+    console.error("Error claiming rewards:", error);
+    return null;
+  }
+}
+
 export async function getDailyStatsOnChain(
   walletAddress: string,
   timestamp: number
@@ -251,6 +294,10 @@ export async function addToWhitelistOnChain(walletAddress: string, nim: string):
     console.error("Wallet client not configured for admin");
     return null;
   }
+  if (!isValidEvmAddress(walletAddress)) {
+    console.warn(`Invalid EVM address skipped (add): ${walletAddress}`);
+    return null;
+  }
 
   try {
     const { request } = await publicClient.simulateContract({
@@ -273,6 +320,10 @@ export async function addToWhitelistOnChain(walletAddress: string, nim: string):
 export async function removeFromWhitelistOnChain(walletAddress: string): Promise<string | null> {
   if (!walletClient || !account) {
     console.error("Wallet client not configured for admin");
+    return null;
+  }
+  if (!isValidEvmAddress(walletAddress)) {
+    console.warn(`Invalid EVM address skipped (remove): ${walletAddress}`);
     return null;
   }
 

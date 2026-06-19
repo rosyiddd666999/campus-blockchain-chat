@@ -6,6 +6,7 @@ import {
   getOnChainBalance,
   getUnclaimedBalance,
   getDailyStatsOnChain,
+  claimRewardsOnChain,
 } from "../services/blockchain";
 
 const router = Router();
@@ -41,7 +42,31 @@ router.get("/balance", authMiddleware, async (req: AuthenticatedRequest, res: Re
   }
 });
 
-// 2. Reward History Logs (From DB)
+// 2. Claim Rewards (mint unclaimed CSIT to wallet on-chain)
+router.post("/claim", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: "Unauthorized" });
+      return;
+    }
+
+    const txHash = await claimRewardsOnChain(req.user.walletAddress);
+    if (!txHash) {
+      res.status(500).json({ success: false, error: "Gagal claim reward on-chain" });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: { txHash },
+    });
+  } catch (error) {
+    console.error("Error claiming rewards:", error);
+    res.status(500).json({ success: false, error: "Gagal claim reward" });
+  }
+});
+
+// 3. Reward History Logs (From DB)
 router.get("/history", authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {

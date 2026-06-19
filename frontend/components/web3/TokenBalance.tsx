@@ -1,47 +1,77 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-import { Coins } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Coins, RefreshCw } from "lucide-react";
 import { useAccount } from "wagmi";
-import { useAppStore } from "@/lib/store";
+import { rewardsApi, getJwt } from "@/lib/api";
 
+/* ─────────────────────────────────────────
+   TokenBalance
+───────────────────────────────────────── */
 export function TokenBalance() {
-  const { isConnected, address } = useAccount();
-  const users = useAppStore((state) => state.users);
-  const registerOrUpdateUser = useAppStore((state) => state.registerOrUpdateUser);
+  const { address, isConnected } = useAccount();
 
-  const [balance, setBalance] = useState(0);
-  const [animate, setAnimate] = useState(false);
-  const prevBalanceRef = useRef<number>(0);
+  const [value, setValue] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function fetchBalance(addr: string) {
+    if (!getJwt(addr)) {
+      setValue(null);
+      return;
+    }
+    setLoading(true);
+    try {
+      const data = await rewardsApi.getBalance(addr);
+      const total = (data.onChainFormatted ?? 0) + (data.unclaimedFormatted ?? 0);
+      setValue(total.toFixed(2));
+    } catch {
+      setValue(null);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    if (address) {
-      const userKey = address.toLowerCase();
-      const user = users[userKey] || registerOrUpdateUser(address, {});
-      const currentBalance = user.balance;
-
-      if (prevBalanceRef.current !== currentBalance) {
-        setAnimate(true);
-        const timer = setTimeout(() => setAnimate(false), 1000);
-        prevBalanceRef.current = currentBalance;
-        setBalance(currentBalance);
-        return () => clearTimeout(timer);
-      }
-      setBalance(currentBalance);
+    if (!address || !isConnected) {
+      setValue(null);
+      return;
     }
-  }, [address, users, registerOrUpdateUser]);
+    fetchBalance(address);
+    const interval = setInterval(() => fetchBalance(address), 15_000);
+    return () => clearInterval(interval);
+  }, [address, isConnected]);
 
-  if (!isConnected) return null;
+  if (!isConnected || !address) return null;
 
   return (
-    <div
-      className={`flex items-center gap-2 rounded-xl bg-emerald-500/10 px-3 py-1.5 border border-emerald-500/20 text-emerald-500 font-bold text-sm transition-all duration-300 ${
-        animate ? "scale-110 shadow-lg shadow-emerald-500/20 bg-emerald-500/20" : ""
-      }`}
-    >
-      <Coins className={`h-4.5 w-4.5 ${animate ? "animate-bounce" : ""}`} />
-      <span className="tabular-nums">{balance.toLocaleString()} CSIT</span>
+    <div className="hidden sm:flex items-center gap-1.5 h-10 px-3 rounded-xl border border-border bg-card text-sm font-medium">
+      <Coins className="h-4 w-4 text-emerald-500 shrink-0" aria-hidden />
+
+      {loading && value === null ? (
+        <span className="skeleton h-4 w-16 inline-block" aria-label="Memuat balance..." />
+      ) : value === null ? (
+        <span className="text-xs text-muted-foreground">Login</span>
+      ) : (
+        <span className="csit-amount tabular-nums">
+          {value}{" "}
+          <span className="text-muted-foreground font-normal">CSIT</span>
+        </span>
+      )}
+
+      <button
+        onClick={() => address && fetchBalance(address)}
+        disabled={loading}
+        className="ml-0.5 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 cursor-pointer"
+        title="Refresh balance"
+        aria-label="Refresh CSIT balance"
+      >
+        <RefreshCw
+          className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+          aria-hidden
+        />
+      </button>
     </div>
   );
 }
+
 export default TokenBalance;

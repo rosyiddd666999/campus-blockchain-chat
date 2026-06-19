@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { prisma } from "../config/database";
 import { redis } from "../config/redis";
 import { isWhitelisted } from "../services/blockchain";
+import { account } from "../config/blockchain";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth";
 import { z } from "zod/v4";
 
@@ -42,7 +43,8 @@ router.post("/verify", async (req: Request, res: Response) => {
   try {
     const parseResult = verifySchema.safeParse(req.body);
     if (!parseResult.success) {
-      res.status(400).json({ success: false, error: parseResult.error.errors[0].message });
+      const msg = parseResult.error.issues?.[0]?.message || "Invalid input";
+      res.status(400).json({ success: false, error: msg });
       return;
     }
 
@@ -73,15 +75,27 @@ router.post("/verify", async (req: Request, res: Response) => {
     });
 
     if (!user) {
-      // Return success: true with no token to tell frontend that registration is required
-      res.json({
-        success: true,
-        data: {
-          registered: false,
-          walletAddress,
-        },
-      });
-      return;
+      // Auto-register admin wallet without needing NIM/name
+      if (account && walletAddress === account.address.toLowerCase()) {
+        user = await prisma.user.create({
+          data: {
+            walletAddress,
+            nim: `ADMIN-${Date.now()}`,
+            name: "Administrator",
+            angkatan: new Date().getFullYear(),
+            isVerified: true,
+          },
+        });
+      } else {
+        res.json({
+          success: true,
+          data: {
+            registered: false,
+            walletAddress,
+          },
+        });
+        return;
+      }
     }
 
     // Check whitelist status on-chain and sync with database
@@ -94,15 +108,15 @@ router.post("/verify", async (req: Request, res: Response) => {
     }
 
     // Generate JWT
-    const jwtSecret = process.env.JWT_SECRET ?? "super-secret-jwt-key-min-32-chars-for-safety-and-compliance";
+    const jwtSecret = (process.env.JWT_SECRET ?? "super-secret-jwt-key-min-32-chars-for-safety-and-compliance") as jwt.Secret;
     const token = jwt.sign(
       {
         id: user.id,
         walletAddress: user.walletAddress,
         nim: user.nim,
-      },
+      } as Record<string, unknown>,
       jwtSecret,
-      { expiresIn: process.env.JWT_EXPIRES_IN ?? "7d" }
+      { expiresIn: (process.env.JWT_EXPIRES_IN ?? "7d") } as jwt.SignOptions
     );
 
     res.json({
@@ -131,7 +145,8 @@ router.post("/register", async (req: Request, res: Response) => {
   try {
     const parseResult = registerSchema.safeParse(req.body);
     if (!parseResult.success) {
-      res.status(400).json({ success: false, error: parseResult.error.errors[0].message });
+      const msg = parseResult.error.issues?.[0]?.message || "Invalid input";
+      res.status(400).json({ success: false, error: msg });
       return;
     }
 

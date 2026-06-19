@@ -5,36 +5,52 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAccount } from "wagmi";
 import { Home, PlusSquare, MessageSquare, Trophy, Shield, User } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { useCurrentUser } from "@/lib/store";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { address } = useAccount();
-  
-  // Check if current user is admin (Ahmad Rosyid 0x111... is the mock admin)
-  const isAdmin = address?.toLowerCase() === "0x1111111111111111111111111111111111111111";
+  const currentUser = useCurrentUser();
+
+  // Admin = deployer wallet address dari env
+  const adminAddress = process.env.NEXT_PUBLIC_ADMIN_ADDRESS?.toLowerCase();
+  const isAdmin = !!adminAddress && address?.toLowerCase() === adminAddress;
 
   const navItems = [
-    { name: "Forum Feed", href: "/", icon: Home },
-    { name: "Tanya Diskusi", href: "/ask", icon: PlusSquare },
-    { name: "Chat Realtime", href: "/chat", icon: MessageSquare },
-    { name: "Leaderboard", href: "/leaderboard", icon: Trophy },
+    { name: "Forum Feed",    href: "/",           icon: Home },
+    { name: "Tanya Diskusi", href: "/ask",         icon: PlusSquare },
+    { name: "Chat Realtime", href: "/chat",        icon: MessageSquare },
+    { name: "Leaderboard",   href: "/leaderboard", icon: Trophy },
     ...(isAdmin ? [{ name: "Admin Panel", href: "/admin", icon: Shield }] : []),
     ...(address
       ? [{ name: "Profil Saya", href: `/profile/${address}`, icon: User }]
-      : [{ name: "Profil Saya", href: "#", icon: User, disabled: true }]),
+      : [{ name: "Profil Saya", href: "#", icon: User, disabled: true }]
+    ),
   ];
 
   return (
     <>
-      {/* Desktop Sidebar - Left */}
-      <aside className="hidden w-64 shrink-0 border-r border-border bg-card/50 p-4 md:block h-[calc(100vh-4rem)] sticky top-16">
-        <nav className="space-y-1.5">
+      {/* Desktop Sidebar */}
+      <aside className="hidden w-56 shrink-0 border-r border-border bg-card/50 p-4 md:block h-[calc(100vh-4rem)] sticky top-16">
+        {/* User info — tampil kalau sudah login */}
+        {currentUser && (
+          <div className="mb-4 rounded-xl bg-secondary px-3 py-2.5">
+            <p className="text-xs font-bold text-foreground truncate">{currentUser.name}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{currentUser.nim}</p>
+            {currentUser.isVerified && (
+              <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-500">
+                ✓ Terverifikasi
+              </span>
+            )}
+          </div>
+        )}
+
+        <nav className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
-            
-            if (item.disabled) {
+
+            if ((item as any).disabled) {
               return (
                 <div
                   key={item.name}
@@ -53,11 +69,11 @@ export function Sidebar() {
                 href={item.href}
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 ${
                   isActive
-                    ? "bg-emerald-500/10 text-emerald-500 dark:bg-emerald-500/15"
+                    ? "bg-emerald-500/10 text-emerald-500"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 }`}
               >
-                <Icon className={`h-5 w-5 ${isActive ? "text-emerald-500" : "text-muted-foreground group-hover:text-foreground"}`} />
+                <Icon className={`h-5 w-5 ${isActive ? "text-emerald-500" : ""}`} />
                 <span>{item.name}</span>
               </Link>
             );
@@ -72,11 +88,11 @@ export function Sidebar() {
             const Icon = item.icon;
             const isActive = pathname === item.href;
 
-            if (item.disabled) {
+            if ((item as any).disabled) {
               return (
                 <div
                   key={item.name}
-                  className="flex flex-col items-center justify-center w-12 h-12 text-zinc-400 dark:text-zinc-600 opacity-40 cursor-not-allowed"
+                  className="flex flex-col items-center justify-center w-12 h-12 text-zinc-400 opacity-40 cursor-not-allowed"
                 >
                   <Icon className="h-5 w-5" />
                   <span className="text-[10px] mt-0.5">{item.name.split(" ")[0]}</span>
@@ -104,4 +120,5 @@ export function Sidebar() {
     </>
   );
 }
+
 export default Sidebar;

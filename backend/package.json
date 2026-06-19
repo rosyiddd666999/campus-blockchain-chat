@@ -10,6 +10,7 @@
     "db:generate": "prisma generate --schema=src/prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema=src/prisma/schema.prisma",
     "db:push": "prisma db push --schema=src/prisma/schema.prisma",
+    "db:seed": "prisma db seed --schema=src/prisma/schema.prisma",
     "load-test": "tsx scripts/load-test-chat.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -47,5 +48,8 @@
     "@prisma/client@5.22.0": true,
     "@prisma/engines@5.22.0": true,
     "esbuild@0.28.1": true
+  },
+  "prisma": {
+    "seed": "tsx src/prisma/seed.ts"
   }
 }

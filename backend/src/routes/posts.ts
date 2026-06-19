@@ -110,7 +110,7 @@ router.post("/", authMiddleware, whitelistMiddleware, async (req: AuthenticatedR
 
     const parseResult = createPostSchema.safeParse(req.body);
     if (!parseResult.success) {
-      res.status(400).json({ success: false, error: parseResult.error.errors[0].message });
+      res.status(400).json({ success: false, error: parseResult.error.issues[0].message });
       return;
     }
 
@@ -284,7 +284,7 @@ router.post("/:id/answers", authMiddleware, whitelistMiddleware, async (req: Aut
 
     const parseResult = createAnswerSchema.safeParse(req.body);
     if (!parseResult.success) {
-      res.status(400).json({ success: false, error: parseResult.error.errors[0].message });
+      res.status(400).json({ success: false, error: parseResult.error.issues[0].message });
       return;
     }
 
@@ -340,7 +340,7 @@ router.post("/:id/best", authMiddleware, whitelistMiddleware, async (req: Authen
 
     const parseResult = bestAnswerSchema.safeParse(req.body);
     if (!parseResult.success) {
-      res.status(400).json({ success: false, error: parseResult.error.errors[0].message });
+      res.status(400).json({ success: false, error: parseResult.error.issues[0].message });
       return;
     }
 
@@ -467,7 +467,55 @@ router.post("/:id/like", authMiddleware, whitelistMiddleware, async (req: Authen
   }
 });
 
-// 7. Share Post (+1 CSIT reward to author of post)
+// 7. Toggle Like Answer
+router.post("/:id/answer-like", authMiddleware, whitelistMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: "Unauthorized" });
+      return;
+    }
+
+    const { id: answerId } = req.params;
+
+    const answer = await prisma.answer.findUnique({
+      where: { id: answerId },
+    });
+
+    if (!answer) {
+      res.status(404).json({ success: false, error: "Jawaban tidak ditemukan" });
+      return;
+    }
+
+    const existingLike = await prisma.like.findFirst({
+      where: {
+        userId: req.user.id,
+        answerId,
+      },
+    });
+
+    if (existingLike) {
+      await prisma.like.delete({
+        where: { id: existingLike.id },
+      });
+      res.json({ success: true, data: { liked: false } });
+    } else {
+      await prisma.like.create({
+        data: { userId: req.user.id, answerId },
+      });
+
+      if (answer.authorId !== req.user.id) {
+        await distributeReward(answer.authorId, "ReceiveLike", answer.id);
+      }
+
+      res.json({ success: true, data: { liked: true } });
+    }
+  } catch (error) {
+    console.error("Error toggling answer like:", error);
+    res.status(500).json({ success: false, error: "Gagal menyukai jawaban" });
+  }
+});
+
+// 8. Share Post (+1 CSIT reward to author of post)
 router.post("/:id/share", authMiddleware, whitelistMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) {

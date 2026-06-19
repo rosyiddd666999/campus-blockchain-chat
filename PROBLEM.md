@@ -207,7 +207,7 @@ Perbaikan disusun sesuai urutan Phase di `AGENT.md` agar setiap tahap bisa diver
 
 #### 4B. Integrasi API (Masih harus dilakukan)
 
-- [ ] **4.3** Buat API client utility (`frontend/lib/api.ts`):
+- [x] **4.3** Buat API client utility (`frontend/lib/api.ts`):
   ```typescript
   // Axios/fetch wrapper dengan base URL dari NEXT_PUBLIC_API_URL
   // Auto-attach JWT token dari localStorage ke header Authorization

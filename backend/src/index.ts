@@ -21,6 +21,7 @@ import commentsRouter from "./routes/comments";
 import rewardsRouter from "./routes/rewards";
 import leaderboardRouter from "./routes/leaderboard";
 import adminRouter from "./routes/admin";
+import profileRouter from "./routes/profile";
 
 // Import Event Listener
 import { startEventListener } from "./events/listener";
@@ -53,9 +54,19 @@ app.use("/api/comments", commentsRouter);
 app.use("/api/rewards", rewardsRouter);
 app.use("/api/leaderboard", leaderboardRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/profile", profileRouter);
 
-app.get("/health", (_req, res) => {
-  res.json({ success: true, data: { status: "ok" } });
+
+app.get("/", (_req, res) => {
+  res.json({
+    success: true,
+    data: {
+      name: "ICP Community Backend",
+      version: "1.0.0",
+      status: "running",
+      docs: "/api/health",
+    },
+  });
 });
 
 app.get("/api/chat/rooms", (_req, res) => {
